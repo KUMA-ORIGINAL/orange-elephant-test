@@ -28,7 +28,7 @@ services:
       - .env.prod
     container_name: asgi-backend
     restart: always
-    command: daphne config.asgi -b 0.0.0.0 -p 9000
+    command: daphne -u /tmp/daphne.sock config.asgi:application -b 0.0.0.0 -p 9000
     expose:
       - 9000
     volumes:
