@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Test Page with WebSockets</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            margin: 20px 0;
+        }
+        input, select, button {
+            margin: 5px 0;
+            padding: 5px;
+            font-size: 14px;
+        }
+        .result, .notifications {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            max-width: 600px;
+        }
+        .box {
+            display: flex;
+            gap: 40px;
+        }
+        .helptext {
+            display: block; /* Подсказка будет занимать всю строку */
+            margin-top: 5px; /* Отступ сверху от поля ввода */
+            color: #555; /* Цвет текста подсказки */
+            font-size: 0.9em; /* Размер шрифта */
+        }
+    </style>
+</head>
+<body>
+    <h1>Test CRUD Operations with WebSocket Notifications</h1>
+
+    <div class="box">
+        <div>
+            <h2>Create User</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ user_form.as_p }}
+                <button type="submit" name="user_form">Создать пользователя</button>
+            </form>
+
+            <h2>Create Order</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ order_form.as_p }}
+                <button type="submit" name="order_form">Создать заказ</button>
+            </form>
+        </div>
+        <div>
+            <h3>Messages</h3>
+            {% if messages %}
+                <ul>
+                    {% for message in messages %}
+                        <li class="result">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No messages yet.</p>
+            {% endif %}
+
+            <h3>Notifications</h3>
+            <div class="notifications" id="notifications"></div>
+        </div>
+    </div>
+
+    <script>
+        const notificationsDiv = document.getElementById('notifications');
+
+        const userSocket = new WebSocket('ws://' + window.location.host + '/ws/users/');
+        const orderSocket = new WebSocket('ws://' + window.location.host + '/ws/orders/');
+
+        userSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerText = data.message;
+            notificationsDiv.appendChild(notification);
+        };
+
+        orderSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerText = data.message;
+            notificationsDiv.appendChild(notification);
+        };
+
+    </script>
+</body>
+</html>
