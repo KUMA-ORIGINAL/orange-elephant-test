@@ -29,10 +29,10 @@
             gap: 40px;
         }
         .helptext {
-            display: block; /* Подсказка будет занимать всю строку */
-            margin-top: 5px; /* Отступ сверху от поля ввода */
-            color: #555; /* Цвет текста подсказки */
-            font-size: 0.9em; /* Размер шрифта */
+            display: block;
+            margin-top: 5px;
+            color: #555;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -72,7 +72,65 @@
         </div>
     </div>
 
+    <h1>Manage Products</h1>
+    <h2>Create Product</h2>
+    <form id="create-product-form">
+        <input type="text" id="product-name" placeholder="Name" required>
+        <select id="product-category" required>
+            <!-- Options will be filled by JavaScript -->
+        </select>
+        <input type="number" id="product-price" placeholder="Price" required step="0.01">
+        <button type="submit">Create Product</button>
+    </form>
+
+    <h2>Update Product</h2>
+    <form id="update-product-form">
+        <select id="product-id-update" required>
+            <!-- Options will be filled by JavaScript -->
+        </select>
+        <input type="text" id="update-product-name" placeholder="Name">
+        <select id="update-product-category" required>
+            <!-- Options will be filled by JavaScript -->
+        </select>
+        <input type="number" id="update-product-price" placeholder="Price" step="0.01">
+        <button type="submit">Update Product</button>
+    </form>
+
+    <h2>Delete Product</h2>
+    <form id="delete-product-form">
+        <select id="product-id-delete" required>
+            <!-- Options will be filled by JavaScript -->
+        </select>
+        <button type="submit">Delete Product</button>
+    </form>
+
+    <h1>Products List</h1>
+    <table id="products-list">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <h1>Categories List</h1>
+    <table id="categories-list">
+        <thead>
+            <tr>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
     <script>
+        <!--   WEBSOCKET     -->
+
         const notificationsDiv = document.getElementById('notifications');
 
         const userSocket = new WebSocket('ws://' + window.location.host + '/ws/users/');
@@ -93,6 +151,127 @@
             notification.innerText = data.message;
             notificationsDiv.appendChild(notification);
         };
+
+        <!--   PRODUCT    -->
+        function getCsrfToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith('csrftoken=')) {
+                    return cookie.substring('csrftoken='.length);
+                }
+            }
+            return null;
+        }
+
+        const csrfToken = getCsrfToken();
+        const apiUrl = '/api/';
+
+        async function fetchData() {
+            try {
+                const productsResponse = await fetch(`${apiUrl}products/`);
+                const products = await productsResponse.json();
+                const categoriesResponse = await fetch(`${apiUrl}categories/`);
+                const categories = await categoriesResponse.json();
+
+                updateOptions('#product-category', categories);
+                updateOptions('#update-product-category', categories);
+                updateOptions('#product-id-update', products, 'name');
+                updateOptions('#product-id-delete', products, 'name');
+
+                updateList('#products-list tbody', products, false);
+                updateList('#categories-list tbody', categories, true);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function updateOptions(selector, items, textField = 'name') {
+            const select = document.querySelector(selector);
+            select.innerHTML = items.map(item => `<option value="${item.id}">${item[textField]}</option>`).join('');
+        }
+
+        function updateList(selector, items, isCategory = false) {
+            const tbody = document.querySelector(selector);
+
+            if (isCategory) {
+                tbody.innerHTML = items.map(item => `
+                    <tr>
+                        <td>${item.name}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = items.map(item => `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.category}</td>
+                        <td>${item.price}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        document.getElementById('create-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch(`${apiUrl}products/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('product-name').value,
+                        category: document.getElementById('product-category').value,
+                        price: document.getElementById('product-price').value
+                    })
+                });
+                if (response.ok) fetchData();
+            } catch (error) {
+                console.error('Error creating product:', error);
+            }
+        });
+
+        document.getElementById('update-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const productId = document.getElementById('product-id-update').value;
+                const response = await fetch(`${apiUrl}products/${productId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('update-product-name').value,
+                        category: document.getElementById('update-product-category').value,
+                        price: document.getElementById('update-product-price').value
+                    })
+                });
+                if (response.ok) fetchData();
+            } catch (error) {
+                console.error('Error updating product:', error);
+            }
+        });
+
+        document.getElementById('delete-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const productId = document.getElementById('product-id-delete').value;
+                const response = await fetch(`${apiUrl}products/${productId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                if (response.ok) fetchData();
+            } catch (error) {
+                console.error('Error deleting product:', error);
+            }
+        });
+
+        fetchData();
+
 
     </script>
 </body>
